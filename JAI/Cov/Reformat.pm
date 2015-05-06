@@ -52,10 +52,15 @@ Readonly my $DCA_AA1_INDEX      => 1;
 Readonly my $DCA_P2_INDEX       => 2;
 Readonly my $DCA_AA2_INDEX      => 3;
 Readonly my $DCA_SCORE_INDEX    => 5;
+Readonly my $P1_COLUMN_INDEX            => 0;
+Readonly my $P2_COLUMN_INDEX            => 1;
+Readonly my $SCORE_COLUMN_INDEX         => 2;
 Readonly my $PSICOV_P1_INDEX    => 0;
 Readonly my $PSICOV_P2_INDEX    => 1;
 Readonly my $PSICOV_SCORE_INDEX => 4;
+Readonly my $MIN_FIELDS_SIZE_FOR_MATRIX => 10;
 Readonly my $FLOAT_REGEX        => '[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?';
+Readonly my $THREE_COLUMNS_REGEX => '^[0-9]+\s[0-9]+\s' . $FLOAT_REGEX . q($);
 Readonly my $PSICOV_REGEX       => '^[0-9]+\s[0-9]+\s[0-9]+\s[0-9]+\s' .
   $FLOAT_REGEX . q($);
 Readonly my $DCA_REGEX => '^[0-9]+\s[A-Za-z]\s[0-9]+\s[A-Za-z]\s' .
@@ -78,6 +83,14 @@ sub reformat {
   my $out_path     = shift;
   my $first_length = shift;
   my $in_msa       = shift;
+
+  ##############################################################################
+  ## Check if the input data is matrix formatted
+  if ( check_if_matrix($infile_path) ) {
+    $infile_path = matrix_to_paired($infile_path);
+  }
+  ##############################################################################
+
 
   ##############################################################################
   ## Tries to get a function that reads text lines in the format of the input
@@ -257,30 +270,93 @@ sub psicov_parser {
 ################################################################################
 
 ################################################################################
+## Function to read covariation data from data in three columns format
+sub three_columns_parser {
+  my $current_line = shift;
+  my @data = split /\s/msx, $current_line;
+  return ( $data[$P1_COLUMN_INDEX], q(-), $data[$P2_COLUMN_INDEX],
+    q(-), $data[$SCORE_COLUMN_INDEX] );
+}
+################################################################################
+
+
+################################################################################
 ##  get_format_reader
 ##     Reads the covariation score file and gets a function able to read the
 ##     data correctly.
 sub get_format_reader {
   my $infile = shift;
   open my $file_handler, '<', $infile;
-  while ( my $line = <$file_handler> ) {
+  my $line = <$file_handler>;
+  close $file_handler;
+  if ($line) {
     chomp $line;
     if ( $line =~ m/$DCA_REGEX/msx ) {
-      close $file_handler;
       return \&dca_parser;
     }
     if ( $line =~ m/$MI_REGEX/msx ) {
-      close $file_handler;
-      my $reader = \&mi_parser;
-      return $reader;
+      return \&mi_parser;
     }
     if ( $line =~ m/$PSICOV_REGEX/msx ) {
-      close $file_handler;
-      my $reader = \&psicov_parser;
-      return $reader;
+      return \&psicov_parser;
+    }
+    if ( $line =~ m/$THREE_COLUMNS_REGEX/msx ) {
+      return \&three_columns_parser;
     }
   }
-  close $file_handler;
   return 0;
+}
+################################################################################
+
+################################################################################
+## check_if_matrix
+##   reads a covariation file and checks if the content is a matrix table
+sub check_if_matrix {
+  my $file = shift;
+  open my $file_handler, '<', $file;
+  my $line = <$file_handler>;
+  close $file_handler;
+  chomp $line;
+  if ( scalar( split /\s/msx, $line ) >= $MIN_FIELDS_SIZE_FOR_MATRIX ) {
+    return 1;
+  } else {
+    return 0;
+  }
+}
+################################################################################
+
+################################################################################
+## Convert a matrix-like format of ccmpred to a three column format like any
+## other method
+sub matrix_to_paired {
+  my $file        = shift;
+  my $row_counter = 0;
+  my %data        = ();
+  open my $file_handler, '<', $file;
+  while ( my $line = <$file_handler> ) {
+    $row_counter++;
+    chomp $line;
+    my @columns = split /\s/msx, $line;
+    $data{$row_counter} = \@columns;
+  }
+  close $file_handler;
+  my $new_file = $file . '.tmp';
+  open my $file_handler_2, '>', $new_file;
+  matrix_to_paired_aux( $file_handler_2, $row_counter, \%data );
+  close $file_handler_2;
+  return $new_file;
+}
+
+sub matrix_to_paired_aux {
+  my $file_handler = shift;
+  my $row_counter  = shift;
+  my $data         = shift;
+  for my $i ( 1 .. $row_counter ) {
+    for my $j ( $i + 1 .. $row_counter ) {
+      exit if not print {$file_handler}
+        $i . "\t" . $j . "\t" . $data->{$i}->[ $j - 1 ] . "\n";
+    }
+  }
+  return;
 }
 ################################################################################
