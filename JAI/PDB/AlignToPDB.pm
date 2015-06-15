@@ -47,9 +47,9 @@ use Symbol;
 
 ################################################################################
 ## Exports
-our @EXPORT_OK   = qw(func1 func2);
-our %EXPORT_TAGS = ( DEFAULT => [qw(&func1)],
-                     Both    => [qw(&func1 &func2)]);
+our @EXPORT_OK   = qw(align_to_pdb);
+our %EXPORT_TAGS = ( DEFAULT => [qw(&align_to_pdb)],
+                     Both    => [qw(&align_to_pdb)]);
 ################################################################################
 
 ################################################################################
