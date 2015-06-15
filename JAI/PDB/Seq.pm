@@ -4,8 +4,8 @@
 ## the chains.
 ## Author: Javier Iserte
 ## Usage:
-##   use Jai::Pdb::Seq;
-##   use Jai::Pdb::Seq qw(get_chain_res gen_aa_map);
+##   use Jai::PDB::Seq;
+##   use Jai::PDB::Seq qw(get_chain_res gen_aa_map);
 ################################################################################
 
 ################################################################################
@@ -84,7 +84,7 @@ sub get_chain_res {
   ##   2. Lines, contains from a given Chain
   @model_data = grep { m/^.{21}$chain/msx } @model_data;
   ##############################################################################
-
+  
   ##############################################################################
   ## Get residue number, and number. And create a map with this data
   @model_data = map { get_chain_res_aux_2($ARG) } @model_data;
