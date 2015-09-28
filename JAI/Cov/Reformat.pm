@@ -26,6 +26,7 @@ use IPC::Open3;
 use Data::Dumper::Simple;
 use Exporter 'import';
 use Set::Scalar;
+use File::Temp;
 use English '-no_match_vars';
 ################################################################################
 
@@ -38,30 +39,30 @@ our %EXPORT_TAGS = ( DEFAULT => [qw(&reformat)],
 
 ################################################################################
 ## Constants
-Readonly my $EMPTY              => q();
-Readonly my $MAX_SCORE          => 1_000_000;
-Readonly my $MIN_SCORE          => -900;
-Readonly my $UNDEFINED          => -999;
-Readonly my $MI_P1_INDEX        => 1;
-Readonly my $MI_AA1_INDEX       => 2;
-Readonly my $MI_P2_INDEX        => 4;
-Readonly my $MI_AA2_INDEX       => 5;
-Readonly my $MI_SCORE_INDEX     => 11;
-Readonly my $DCA_P1_INDEX       => 0;
-Readonly my $DCA_AA1_INDEX      => 1;
-Readonly my $DCA_P2_INDEX       => 2;
-Readonly my $DCA_AA2_INDEX      => 3;
-Readonly my $DCA_SCORE_INDEX    => 5;
+Readonly my $EMPTY                      => q();
+Readonly my $MAX_SCORE                  => 1_000_000;
+Readonly my $MIN_SCORE                  => -900;
+Readonly my $UNDEFINED                  => -999;
+Readonly my $MI_P1_INDEX                => 1;
+Readonly my $MI_AA1_INDEX               => 2;
+Readonly my $MI_P2_INDEX                => 4;
+Readonly my $MI_AA2_INDEX               => 5;
+Readonly my $MI_SCORE_INDEX             => 11;
+Readonly my $DCA_P1_INDEX               => 0;
+Readonly my $DCA_AA1_INDEX              => 1;
+Readonly my $DCA_P2_INDEX               => 2;
+Readonly my $DCA_AA2_INDEX              => 3;
+Readonly my $DCA_SCORE_INDEX            => 5;
 Readonly my $P1_COLUMN_INDEX            => 0;
 Readonly my $P2_COLUMN_INDEX            => 1;
 Readonly my $SCORE_COLUMN_INDEX         => 2;
-Readonly my $PSICOV_P1_INDEX    => 0;
-Readonly my $PSICOV_P2_INDEX    => 1;
-Readonly my $PSICOV_SCORE_INDEX => 4;
+Readonly my $PSICOV_P1_INDEX            => 0;
+Readonly my $PSICOV_P2_INDEX            => 1;
+Readonly my $PSICOV_SCORE_INDEX         => 4;
 Readonly my $MIN_FIELDS_SIZE_FOR_MATRIX => 15;
-Readonly my $FLOAT_REGEX        => '[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?';
+Readonly my $FLOAT_REGEX         => '[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?';
 Readonly my $THREE_COLUMNS_REGEX => '^[0-9]+\s[0-9]+\s' . $FLOAT_REGEX . q($);
-Readonly my $PSICOV_REGEX       => '^[0-9]+\s[0-9]+\s[0-9]+\s[0-9]+\s' .
+Readonly my $PSICOV_REGEX        => '^[0-9]+\s[0-9]+\s[0-9]+\s[0-9]+\s' .
   $FLOAT_REGEX . q($);
 Readonly my $DCA_REGEX => '^[0-9]+\s[A-Za-z]\s[0-9]+\s[A-Za-z]\s' .
   $FLOAT_REGEX . '\s' . $FLOAT_REGEX . q($);
@@ -85,12 +86,18 @@ sub reformat {
   my $in_msa       = shift;
 
   ##############################################################################
+  ## Check if the output file is not empty
+  if ( !defined $out_path ) {
+    exit 1;
+  }
+  ##############################################################################
+
+  ##############################################################################
   ## Check if the input data is matrix formatted
   if ( check_if_matrix($infile_path) ) {
     $infile_path = matrix_to_paired($infile_path);
   }
   ##############################################################################
-
 
   ##############################################################################
   ## Tries to get a function that reads text lines in the format of the input
@@ -279,7 +286,6 @@ sub three_columns_parser {
 }
 ################################################################################
 
-
 ################################################################################
 ##  get_format_reader
 ##     Reads the covariation score file and gets a function able to read the
@@ -287,7 +293,10 @@ sub three_columns_parser {
 sub get_format_reader {
   my $infile = shift;
   open my $file_handler, '<', $infile;
-  my $line = <$file_handler>;
+  my $line = q();
+  while ( ( $line eq $EMPTY || $line =~ m/^\s*#/msx ) && !eof $file_handler ) {
+    $line = <$file_handler>;
+  }
   close $file_handler;
   if ($line) {
     chomp $line;
@@ -340,11 +349,18 @@ sub matrix_to_paired {
     $data{$row_counter} = \@columns;
   }
   close $file_handler;
-  my $new_file = $file . '.tmp';
-  open my $file_handler_2, '>', $new_file;
+  my $tmp = File::Temp->new( TEMPLATE => 'tempXXXXX', DIR => q(.) . q(/),
+    SUFFIX => '.data', UNLINK => 1 );
+  open my $file_handler_2, '>', $tmp;
   matrix_to_paired_aux( $file_handler_2, $row_counter, \%data );
   close $file_handler_2;
-  return $new_file;
+  return $tmp;
+
+  #my $new_file = $file . '.tmp';
+  #open my $file_handler_2, '>', $new_file;
+  #matrix_to_paired_aux( $file_handler_2, $row_counter, \%data );
+  #close $file_handler_2;
+  #return $new_file;
 }
 
 sub matrix_to_paired_aux {
