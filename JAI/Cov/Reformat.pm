@@ -1,10 +1,9 @@
 #!perl
 ################################################################################
-## This script changes the format of a covariation data file into a common
-## standard format
-## Author: Javier Iserte
-## Usage:
-##   use JAI::Cov::Reformat
+## This module's functions changes the format of a covariation data file
+## into a common standard format
+## Use:
+##   use JAI::Cov::Reformat qw(reformat reformat_simple);
 ################################################################################
 
 ################################################################################
@@ -19,10 +18,8 @@ use warnings;
 use version;
 use IO::File;
 use Getopt::Long;
-use Bio::SeqIO;
 use Readonly;
 use autodie;
-use IPC::Open3;
 use Data::Dumper::Simple;
 use Exporter 'import';
 use Set::Scalar;
@@ -135,7 +132,7 @@ sub reformat {
 sub reformat_simple {
   my $infile_path = shift;
   my $out_path    = shift;
-  my $lengths     = shift;    ## Array reference
+  my $length      = shift;
   ##############################################################################
   ## Check if the output file is not empty
   if ( !defined $out_path ) {
@@ -157,10 +154,6 @@ sub reformat_simple {
   ##############################################################################
 
   if ($reader) {
-    ############################################################################
-    ## Get label map and the total length from input msa.
-    $input_length = reduce { $a + $b } 0, @{$lengths};
-    ############################################################################
 
     ############################################################################
     ## Get the descriptions of the covariation score file that will be in the
@@ -170,7 +163,7 @@ sub reformat_simple {
 
     ############################################################################
     ## Convert format
-    my $header = get_header( $npair, $input_length, $first_length, $min, $max,
+    my $header = get_header( $npair, $length, $first_length, $min, $max,
       q(), q() );
     export_data( $header, $infile_path, $out_path, $reader, $input_length );
     ############################################################################
@@ -421,3 +414,61 @@ sub matrix_to_paired_aux {
   return;
 }
 ################################################################################
+__END__
+=head1 NAME
+
+JAI::Cov::Reformat
+
+=head1 DESCRIPTION
+
+This module's functions changes the format of a covariation data file 
+into a common standard format
+
+=head1 USAGE
+
+use JAI::Cov::Reformat qw(reformat reformat_simple);
+
+=head2 Methods
+
+=over 12
+
+=item C<reformat>
+
+Changes the format of a covariation data file.
+usage: reformat(input covariation file, outfile_path, length of the first 
+protein, input MSA file);
+
+=item C<reformat_simple>
+
+Changes the format of a covariation data file.
+usage: reformat(input covariation file, outfile_path, total_length);
+
+=back
+
+=head1 INCOMPATIBILITIES 
+
+=head1 BUGS AND LIMITATIONS
+
+=head1 REQUIRED ARGUMENTS
+
+=head1 OPTIONS
+
+=head1 DIAGNOSTICS
+
+=head1 EXIT STATUS
+
+=head1 CONFIGURATION
+
+=head1 DEPENDENCIES
+
+IO::File, Getopt::Long, Readonly, autodie, Data::Dumper::Simple, 
+Exporter 'import', Set::Scalar, File::Temp, English '-no_match_vars', 
+List::MoreUtils 'reduce'
+
+=head1 AUTHOR
+
+Javier Iserte
+
+=head1 LICENSE AND COPYRIGHT
+
+=cut
