@@ -28,13 +28,14 @@ use Exporter 'import';
 use Set::Scalar;
 use File::Temp;
 use English '-no_match_vars';
+use List::MoreUtils 'reduce';
 ################################################################################
 
 ################################################################################
 ## Exports
-our @EXPORT_OK = qw(reformat);
-our %EXPORT_TAGS = ( DEFAULT => [qw(&reformat)],
-  Both => [qw(&reformat)] );
+our @EXPORT_OK = qw(reformat reformat_simple);
+our %EXPORT_TAGS = ( DEFAULT => [qw(&reformat &reformat_simple)],
+  Both => [qw(&reformat reformat_simnple)] );
 ################################################################################
 
 ################################################################################
@@ -129,6 +130,55 @@ sub reformat {
   }
   exit 0;
 }
+################################################################################
+## reformat
+sub reformat_simple {
+  my $infile_path = shift;
+  my $out_path    = shift;
+  my $lengths     = shift;    ## Array reference
+  ##############################################################################
+  ## Check if the output file is not empty
+  if ( !defined $out_path ) {
+    exit 1;
+  }
+  ##############################################################################
+
+  ##############################################################################
+  ## Check if the input data is matrix formatted
+  if ( check_if_matrix($infile_path) ) {
+    $infile_path = matrix_to_paired($infile_path);
+  }
+  ##############################################################################
+
+  ##############################################################################
+  ## Tries to get a function that reads text lines in the format of the input
+  ## get_format_reader, returns a function reference.
+  my $reader = get_format_reader($infile_path);
+  ##############################################################################
+
+  if ($reader) {
+    ############################################################################
+    ## Get label map and the total length from input msa.
+    $input_length = reduce { $a + $b } 0, @{$lengths};
+    ############################################################################
+
+    ############################################################################
+    ## Get the descriptions of the covariation score file that will be in the
+    ## header of the output file
+    my ( $min, $max, $npair ) = get_descriptions( $infile_path, $reader );
+    ############################################################################
+
+    ############################################################################
+    ## Convert format
+    my $header = get_header( $npair, $input_length, $first_length, $min, $max,
+      q(), q() );
+    export_data( $header, $infile_path, $out_path, $reader, $input_length );
+    ############################################################################
+  } else {
+    exit 1;
+  }
+  exit 0;
+}
 
 ################################################################################
 ###                                Functions                                ####
@@ -168,7 +218,8 @@ sub export_data {
   open my $file_handler_in,  '<', $infile;
   open my $file_handler_out, '>', $outfile;
   exit if !print {$file_handler_out} $header;
-  export_data_aux( $file_handler_in, $file_handler_out, $reader, $input_length );
+  export_data_aux( $file_handler_in,
+    $file_handler_out, $reader, $input_length );
   close $file_handler_in;
   close $file_handler_out;
   return;
@@ -355,12 +406,6 @@ sub matrix_to_paired {
   matrix_to_paired_aux( $file_handler_2, $row_counter, \%data );
   close $file_handler_2;
   return $tmp;
-
-  #my $new_file = $file . '.tmp';
-  #open my $file_handler_2, '>', $new_file;
-  #matrix_to_paired_aux( $file_handler_2, $row_counter, \%data );
-  #close $file_handler_2;
-  #return $new_file;
 }
 
 sub matrix_to_paired_aux {
