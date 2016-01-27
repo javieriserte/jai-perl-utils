@@ -25,7 +25,6 @@ use Exporter 'import';
 use Set::Scalar;
 use File::Temp;
 use English '-no_match_vars';
-use List::MoreUtils 'reduce';
 ################################################################################
 
 ################################################################################
@@ -128,7 +127,7 @@ sub reformat {
   exit 0;
 }
 ################################################################################
-## reformat
+## reformat_simple
 sub reformat_simple {
   my $infile_path = shift;
   my $out_path    = shift;
@@ -163,9 +162,8 @@ sub reformat_simple {
 
     ############################################################################
     ## Convert format
-    my $header = get_header( $npair, $length, $first_length, $min, $max,
-      q(), q() );
-    export_data( $header, $infile_path, $out_path, $reader, $input_length );
+    my $header = get_header( $npair, $length, $length, $min, $max, q(), q() );
+    export_data( $header, $infile_path, $out_path, $reader, $length );
     ############################################################################
   } else {
     exit 1;
@@ -462,8 +460,7 @@ usage: reformat(input covariation file, outfile_path, total_length);
 =head1 DEPENDENCIES
 
 IO::File, Getopt::Long, Readonly, autodie, Data::Dumper::Simple, 
-Exporter 'import', Set::Scalar, File::Temp, English '-no_match_vars', 
-List::MoreUtils 'reduce'
+Exporter 'import', Set::Scalar, File::Temp, English '-no_match_vars'.
 
 =head1 AUTHOR
 
