@@ -47,9 +47,9 @@ use Symbol;
 
 ################################################################################
 ## Exports
-our @EXPORT_OK   = qw(align_to_pdb);
+our @EXPORT_OK = qw(align_to_pdb);
 our %EXPORT_TAGS = ( DEFAULT => [qw(&align_to_pdb)],
-                     Both    => [qw(&align_to_pdb)]);
+  Both => [qw(&align_to_pdb)] );
 ################################################################################
 
 ################################################################################
@@ -71,7 +71,7 @@ sub align_to_pdb {
   my $pdb_file = shift;
   my $seq_file = shift;
   my $out_file = shift;
-  my $chain = shift;
+  my $chain    = shift;
   my $map_file = shift;
   ##############################################################################
 
@@ -106,8 +106,8 @@ sub align_to_pdb {
       my $pdb_is_not_gap   = ( substr $seqs{'pdb'},   $i, 1 ) ne q(-);
       my $pdb_is_not_x     = ( substr $seqs{'pdb'},   $i, 1 ) ne q(X);
       my $fasta_is_not_gap = ( substr $seqs{'fasta'}, $i, 1 ) ne q(-);
-      $seq_i = $seq_i + ( $pdb_is_not_gap           ? 1 : 0 );
-      $seq_j = $seq_j + ( $fasta_is_not_gap ne q(-) ? 1 : 0 );
+      $seq_i = $seq_i + ( $pdb_is_not_gap   ? 1 : 0 );
+      $seq_j = $seq_j + ( $fasta_is_not_gap ? 1 : 0 );
       if ( $pdb_is_not_gap && $fasta_is_not_gap && $pdb_is_not_x ) {
         $map{$seq_j} = $seq_i;
       }
