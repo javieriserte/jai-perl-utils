@@ -67,7 +67,7 @@ sub split_models {
       my $out_model = Bio::Structure::Model->new( -id => $current_model->id() );
       $entry->add_model($out_model);
       my @chains = $structure->get_chains($current_model);
-      for my $chain (@chains) {$second_chain
+      for my $chain (@chains) {
         my $out_chain = Bio::Structure::Chain->new( -id => $chain->id() );
         $entry->add_chain( $out_model, $out_chain );
         my @residues = $structure->get_residues($chain);
@@ -148,9 +148,11 @@ sub extract_chains {
     for my $model (@models) {
       my $out_model = Bio::Structure::Model->new( -id => $model->id() );
       $entry->add_model($out_model);
-      my @chains = $structure->get_chains($model);
-      my %chain_map = map { $ARG->id() => $ARG } @chains;
-      for my $chain ( @{$chains_ids} ) {
+      my @chains                 = $structure->get_chains($model);
+      my %chain_map              = map { $ARG->id() => $ARG } @chains;
+      my @chains_to_be_extracted = ( defined $chains_ids ) ? @{$chains_ids}
+        : map { $ARG->id() } @chains;
+      for my $chain (@chains_to_be_extracted) {
         my $current_chain = $chain_map{$chain};
         my $out_chain = Bio::Structure::Chain->new( -id => $current_chain->id() );
         $entry->add_chain( $out_model, $out_chain );
