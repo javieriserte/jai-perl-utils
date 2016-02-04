@@ -28,18 +28,19 @@ use English qw( -no_match_vars );
 use Data::Dumper::Simple;
 use List::Util qw(reduce);
 use Exporter 'import';
+use warnings::register;
 ################################################################################
 
 ################################################################################
 ## Exports
-our @EXPORT_OK   = qw(get_chain_res gen_aa_map);
+our @EXPORT_OK = qw(get_chain_res gen_aa_map);
 our %EXPORT_TAGS = ( DEFAULT => [qw(&get_chain_res)],
-                     Both    => [qw(&get_chain_res &gen_aa_map)]);
+  Both => [qw(&get_chain_res &gen_aa_map)] );
 ################################################################################
 
 ################################################################################
 ## Constants
-Readonly my $CONSTANT   => 0;
+Readonly my $CONSTANT => 0;
 ################################################################################
 
 ################################################################################
@@ -51,11 +52,11 @@ our $VERSION = 1.0000;
 ## export_fasta
 ##   Writes a fasta sequente into a file
 sub export_fasta {
-  my $description=shift;
-  my $sequence = shift;
-  my $outfile = shift;
-  open my $file_handler , '>' , $outfile;
-  exit if not print {$file_handler} '>' . $description. "\n" . $sequence . "\n";
+  my $description = shift;
+  my $sequence    = shift;
+  my $outfile     = shift;
+  open my $file_handler, '>', $outfile;
+  exit if not print {$file_handler} '>' . $description . "\n" . $sequence . "\n";
   return close $file_handler;
 }
 ################################################################################
@@ -63,16 +64,16 @@ sub export_fasta {
 ################################################################################
 ## get_chain_res
 ##   Reads a pdb file, extract atom from a single chain and returns the
-##   corresponding sequence. Missing residues are returned as 'X' or other 
+##   corresponding sequence. Missing residues are returned as 'X' or other
 ##   char (given by the user).
 sub get_chain_res {
-  my $pdb_file=shift;
-  my $chain=shift;
-  my $missing = shift;
+  my $pdb_file = shift;
+  my $chain    = shift;
+  my $missing  = shift;
 
   ##############################################################################
   ## Read pdb file
-  open my $file_handler , '<' , $pdb_file;
+  open my $file_handler, '<', $pdb_file;
   my @model_data = get_chain_res_aux($file_handler);
   close $file_handler;
   ##############################################################################
@@ -84,11 +85,10 @@ sub get_chain_res {
   ##   2. Lines, contains from a given Chain
   @model_data = grep { m/^.{21}$chain/msx } @model_data;
   ##############################################################################
-  
   ##############################################################################
   ## Get residue number, and number. And create a map with this data
   @model_data = map { get_chain_res_aux_2($ARG) } @model_data;
-  my %model_res = map { $ARG->[1]=>$ARG->[0] } @model_data;
+  my %model_res = map { $ARG->[1] => $ARG->[0] } @model_data;
   ##############################################################################
 
   ##############################################################################
@@ -103,26 +103,47 @@ sub get_chain_res {
 
   ##############################################################################
   ## Construct the aminoacid sequence. Missing residue are filled with a special
-  ## char. 
+  ## char.
   my @seq = map {
-    exists $model_res{$ARG} ? $aa_map->{$model_res{$ARG}} : $missing
+    get_one_letter_code( $ARG, \%model_res, $aa_map, $missing )
   } 1 .. $max_residue_number;
-  my $sequence = reduce {$a . $b} @seq;
+  my $sequence = reduce { $a . $b } @seq;
+  ##exists $model_res{$ARG} ? $aa_map->{$model_res{$ARG}} : $missing
   ##############################################################################
 
   return $sequence;
 }
+
+sub get_one_letter_code {
+  my $index    = shift;
+  my $residues = shift;
+  my $map      = shift;
+  my $missing  = shift;
+  if ( exists $residues->{$index} ) {
+    if ( exists $map->{ $residues->{$index} } ) {
+      return $map->{ $residues->{$index} }
+    } else {
+      if ( warnings::enabled() ) {
+        warnings::warn("Warning: A nonstandard three letter code for aminoacids was found: $residues->{$index}. Mapped to Missing: $missing.\n");
+      }
+      return $missing;
+    }
+  } else {
+    return $missing;
+  }
+}
+
 sub get_chain_res_aux {
   my $file_handler = shift;
-  my @model_data = ();
+  my @model_data   = ();
   ##############################################################################
   ## Get data from the first model in the PDB file
-  my $model_found=0;
-    while(my $line = <$file_handler>)  {
-    if ($line =~ m/^MODEL/msx ) {
+  my $model_found = 0;
+  while ( my $line = <$file_handler> ) {
+    if ( $line =~ m/^MODEL/msx ) {
       $model_found++;
     }
-    if ($model_found <=1 ) {
+    if ( $model_found <= 1 ) {
       chomp $line;
       push @model_data, $line;
     } else {
@@ -132,6 +153,7 @@ sub get_chain_res_aux {
   ##############################################################################
   return @model_data;
 }
+
 sub get_chain_res_aux_2 {
   my $line = shift;
   ##############################################################################
