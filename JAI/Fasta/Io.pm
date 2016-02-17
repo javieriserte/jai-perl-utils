@@ -1,7 +1,7 @@
 #!perl
 ################################################################################
-## This script ....
-## Author: ....
+## This module contains many functiosn to read and write fasta files
+## Author: Javier Iserte
 ## Usage:
 ##   use JAI::Fasta::Io
 ################################################################################
@@ -25,16 +25,23 @@ use IPC::Open3;
 use Data::Dumper::Simple;
 use List::MoreUtils;
 use Exporter 'import';
+use English qw(-no_match_vars);
 ################################################################################
 
 ################################################################################
 ## Exports
 our @EXPORT_OK = qw(export_fasta_single export_fasta_multiple read_first
-  id_map_from_fasta_text);
-our %EXPORT_TAGS = ( DEFAULT => [qw(&export_fasta_single)],
+  id_map_from_fasta_text load_many_files_as_map export_fasta_map);
+our %EXPORT_TAGS = (
+  DEFAULT => [ qw(&export_fasta_single
+      &load_many_files_as_map
+      &export_fasta_map) ],
   Both => [ qw(&export_fasta_single
       &export_fasta_multiple
-      &read_first &id_map_from_fasta_text) ] );
+      &read_first
+      &id_map_from_fasta_text
+      &load_many_files_as_map
+      &export_fasta_map) ] );
 ################################################################################
 
 ################################################################################
@@ -55,6 +62,41 @@ sub read_first {
     -format => 'fasta' );
   if ( my $first = $seqio_obj->next_seq() ) {
     return ( $first->id, $first->seq() );
+  }
+  return;
+}
+################################################################################
+
+################################################################################
+## load_many_files_as_map : Gets a list of fasta files, reads them all, and
+## returns a hash with all of them
+sub load_many_files_as_map {
+  my $seqs = {};
+  my $desc;
+  for my $file (@ARG) {
+    open my $fh, '<', $file;
+    while ( my $line = <$fh> ) {
+      chomp $line;
+      load_many_files_as_map_aux( $line, \$desc, $seqs );
+    }
+    close $fh;
+  }
+  return $seqs;
+}
+
+sub load_many_files_as_map_aux {
+  my $line = shift;
+  my $desc = shift;
+  my $seqs = shift;
+  if ( ( substr $line, 0, 1 ) eq q(>) ) {
+    ${$desc} = substr $line, 1;
+  } else {
+    if ( defined $desc ) {
+      if ( !exists $seqs->{ ${$desc} } ) {
+        $seqs->{ ${$desc} } = q();
+      }
+      $seqs->{ ${$desc} } .= $line;
+    }
   }
   return;
 }
@@ -90,6 +132,21 @@ sub export_fasta_multiple {
     }
     return close $file_handler;
   }
+}
+################################################################################
+
+################################################################################
+## export_fasta_map : Gets a hash representing a collection of sequences and
+## writes them to a file in fasta format.
+sub export_fasta_map {
+  my $sequences = shift;
+  my $outfile   = shift;
+  open my $fh, '>', $outfile;
+  for my $desc ( sort keys %{$sequences} ) {
+    exit if !print {$fh} ">$desc\n" . $sequences->{$desc} . "\n";
+  }
+  close $fh;
+  return;
 }
 ################################################################################
 
